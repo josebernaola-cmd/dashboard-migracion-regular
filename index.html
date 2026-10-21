@@ -31,6 +31,8 @@ html.dark .tbl tbody tr:hover{background:#1e3a5f!important}
 .tbl th.sorted .ar{opacity:1;color:#2563eb}
 html.dark .tbl th.sorted .ar{color:#60a5fa}
 .tbl .gsep{border-left:2px solid #94a3b8}
+.fbar{position:sticky;z-index:35;padding:10px 12px;margin:0 -4px;border-radius:12px;background:rgba(241,245,249,.96);border:1px solid #cbd5e1;box-shadow:0 6px 14px -8px rgba(15,23,42,.35);backdrop-filter:blur(6px)}
+html.dark .fbar{background:rgba(2,6,23,.94);border-color:#1e293b}
 html.dark .tbl .gsep{border-left:2px solid #475569}
 .ms-panel{max-height:280px;overflow:auto}
 .tab-btn.active{background:#2563eb;color:#fff}
@@ -444,6 +446,10 @@ document.getElementById('btnTheme').onclick=()=>{theme=theme==='dark'?'light':'d
 document.getElementById('subtitle').textContent=`Histórico ${MES[MONTHS[0]]}–${MES[CUR]} ${YEAR} · ${AG.length} asesores en histórico · Dotación vigente: ${RAW.meta.dotacionAsesores} asesores (corte ${RAW.meta.corteDot}) · Data hasta ${LASTDAY}/${CUR}/${YEAR}`;
 document.getElementById('notas').innerHTML=`<b>Definiciones.</b> Ventas = vv totales. HC = asesores únicos (activos y cesados) con día laboral o venta en la ventana. Días laborables = días de lunes a sábado, no feriados, con operación en la ventana. Productividad (general y supervisor) = Ventas / Días laborables / HC; en totales de varios meses o semanas = Ventas / Σ(Días laborables × HC) de cada mes. Productividad asesor = Ventas / días laborables del asesor. Estado Lab: Activo = figura en la Dotación de ${MES[CUR]} (corte ${RAW.meta.corteDot}); Cesado = no figura. Gestión: Laboral = lunes a sábado; No laboral = domingos y feriados nacionales 2026 (1 ene, 2-3 abr, 1 may, 7 y 29 jun, 23, 28 y 29 jul, 6 y 30 ago, 8 oct). Si se elige solo No laboral, la productividad usa los días no laborables con operación. Ausentismo = 1 − días conectados / días laborables programados (asesores en estado ACTIVO). Efectividad = ventas / marcaciones (desde Agosto). Antigüedad 2 de Enero a Junio derivada de la fecha de ingreso. Semanas: lunes–domingo; la S1 inicia el día 1 y lo posterior a la S5 se suma a la S5. El filtro Mes aplica en todas las pestañas; los bloques de Avance del mes en curso y el Informe de Ritmo siempre comparan el mes en curso con el anterior y el Mejor Mes se elige entre los meses seleccionados. Clic en cualquier encabezado de tabla para ordenar.`;
 initT1();initT2();initT3();initT4();initT5();
+/* filtros inmovilizados debajo de la cabecera */
+['f1','f2','f3','f4','f5'].forEach(id=>document.getElementById(id).classList.add('fbar'));
+function stickTop(){const hh=document.querySelector('header').offsetHeight;['f1','f2','f3','f4','f5'].forEach(id=>document.getElementById(id).style.top=hh+'px');}
+stickTop();window.addEventListener('resize',stickTop);
 applyWin(1,LASTDAY);
 </script>
 </body>
