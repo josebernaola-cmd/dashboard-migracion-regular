@@ -6,6 +6,7 @@
 <title>Dashboard Migración Regular</title>
 <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11/dist/index.global.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/apexcharts@3.54.1/dist/apexcharts.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js"></script>
 <style type="text/tailwindcss">
 @custom-variant dark (&:where(.dark, .dark *));
 </style>
@@ -33,6 +34,13 @@ html.dark .tbl th.sorted .ar{color:#60a5fa}
 .tbl .gsep{border-left:2px solid #94a3b8}
 .fbar{position:sticky;z-index:35;padding:10px 12px;margin:0 -4px;border-radius:12px;background:rgba(241,245,249,.96);border:1px solid #cbd5e1;box-shadow:0 6px 14px -8px rgba(15,23,42,.35);backdrop-filter:blur(6px)}
 html.dark .fbar{background:rgba(2,6,23,.94);border-color:#1e293b}
+.sem{display:inline-block;padding:1px 8px;border-radius:999px;color:#fff;font-size:11px;font-weight:700;min-width:58px;text-align:center}
+.capbar{position:absolute;top:10px;right:12px;display:flex;gap:6px;z-index:5}
+.capbar button{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #cbd5e1;background:#f8fafc;color:#334155;display:flex;align-items:center;gap:4px}
+.capbar button:hover{background:#dbeafe;border-color:#93c5fd}
+html.dark .capbar button{background:#1e293b;border-color:#334155;color:#cbd5e1}
+html.dark .capbar button:hover{background:#1e3a5f}
+.toast{position:fixed;bottom:18px;right:18px;z-index:99;background:#0f172a;color:#fff;padding:8px 14px;border-radius:8px;font-size:12px;box-shadow:0 8px 20px rgba(0,0,0,.3)}
 html.dark .tbl .gsep{border-left:2px solid #475569}
 .ms-panel{max-height:280px;overflow:auto}
 .tab-btn.active{background:#2563eb;color:#fff}
@@ -136,6 +144,23 @@ html.dark .pos{color:#34d399}html.dark .neg{color:#f87171}
 <script>
 document.querySelectorAll('.card').forEach(e=>e.className+=' bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 shadow-sm');
 document.querySelectorAll('.ct').forEach(e=>e.className+=' text-sm font-semibold mb-3 text-slate-700 dark:text-slate-200');
+/* ===== Captura de cuadros y gráficos (Copiar al portapapeles / Descargar PNG) ===== */
+function toast(msg){const t=document.createElement('div');t.className='toast';t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),2200);}
+async function snap(card){
+  const saved=[];card.querySelectorAll('.overflow-auto').forEach(el=>{saved.push([el,el.style.maxHeight,el.style.overflow]);el.style.maxHeight='none';el.style.overflow='visible';});
+  const w0=card.style.width;let w=card.offsetWidth;card.querySelectorAll('table').forEach(tb=>{w=Math.max(w,tb.scrollWidth+34);});card.style.width=w+'px';
+  const bg=document.documentElement.classList.contains('dark')?'#0f172a':'#ffffff';
+  try{return await htmlToImage.toBlob(card,{pixelRatio:2,backgroundColor:bg,filter:n=>!(n.classList&&n.classList.contains('capbar'))});}
+  finally{card.style.width=w0;saved.forEach(([el,mh,ov])=>{el.style.maxHeight=mh;el.style.overflow=ov;});}
+}
+function capName(card){const t=(card.querySelector('.ct')?.textContent||'cuadro').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^\w]+/g,'_').slice(0,60);const d=new Date();return `${t}_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.png`;}
+const ICO_CAM='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>';
+const ICO_DL='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+document.querySelectorAll('.card').forEach(card=>{if(!card.querySelector('.ct'))return;card.classList.add('relative');card.querySelector('.ct').style.paddingRight='190px';
+  const bar=document.createElement('div');bar.className='capbar';bar.innerHTML=`<button data-a="copy" title="Capturar y copiar la imagen">${ICO_CAM} Capturar</button><button data-a="dl" title="Descargar imagen PNG">${ICO_DL} Descargar</button>`;card.appendChild(bar);
+  bar.querySelector('[data-a=dl]').onclick=async()=>{try{const b=await snap(card);const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=capName(card);a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4000);toast('Imagen descargada');}catch(e){toast('No se pudo generar la imagen');console.error(e);}};
+  bar.querySelector('[data-a=copy]').onclick=async()=>{try{const b=await snap(card);if(navigator.clipboard&&window.ClipboardItem){await navigator.clipboard.write([new ClipboardItem({'image/png':b})]);toast('Imagen copiada: pégala con Ctrl+V');}else{const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=capName(card);a.click();toast('Tu navegador no permite copiar; se descargó la imagen');}}catch(e){try{const b=await snap(card);const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download=capName(card);a.click();toast('Se descargó la imagen');}catch(e2){toast('No se pudo generar la imagen');}}};
+});
 
 /* ================= DATA ================= */
 const RAW=JSON.parse(document.getElementById('rawdata').textContent);
@@ -262,11 +287,25 @@ function table(host,head,rows,foot,seps=[]){
 const delta=(a,b)=>{if(a==null||b==null||!b)return'–';const d=a/b-1;return `<span class="${d>=0?'pos':'neg'}">${d>=0?'▲':'▼'} ${pct(Math.abs(d))}</span>`;};
 const mlab=m=>MES[m]+(m===CUR?'*':'');
 
+/* ================= SEMÁFORO ================= */
+const SEM=['Bien','Regular','Mal','Sin dato'];const SEMC=['#16a34a','#eab308','#dc2626','#94a3b8'];
+const SEMS={t1:new Map(),t2:new Map(),t3:new Map()};
+function baseMonths(mid){const ms=[...FILT[mid].sel].filter(m=>m!==CUR).sort((a,b)=>a-b);return ms.length?ms:[CUR-1];}
+const baseLabel=bm=>bm.map(m=>MES[m]).join('+');
+const semClass=v=>v==null||!isFinite(v)?3:v>0.05?0:v<-0.05?2:1;
+function semCompute(pred,keyFn,pf,bm){const day=Math.min(W.b,LASTDAY);const save={...W};W={a:W.a,b:day};
+  const c=scan(i=>pred(i)&&M[i]===CUR,keyFn),b=scan(i=>pred(i)&&bm.includes(M[i]),keyFn);W=save;
+  const out=new Map();new Set([...c.keys(),...b.keys()]).forEach(k=>{const x=pf(c.get(k)),y=pf(b.get(k));const v=(x!=null&&y)?x/y-1:null;out.set(k,{v,cls:semClass(v)});});return out;}
+const semOK=(tab,key)=>{const s=SEMS[tab].get(key);return has(tab+'sf',s?s.cls:3);};
+const semCell=s=>{if(!s||s.cls===3)return'<span class="sem" style="background:#94a3b8">Sin dato</span>';return `<span class="${s.v>=0?'pos':'neg'}">${s.v>=0?'▲':'▼'} ${pct(Math.abs(s.v))}</span> <span class="sem" style="background:${SEMC[s.cls]}">${SEM[s.cls]}</span>`;};
+function semFilter(host,tab,onChange){multiSelect(host,tab+'sf','Semáforo',SEM.map((s,i)=>({v:i,t:s})),onChange);}
+
 /* ================= TAB 1 ================= */
 function initT1(){const h=document.getElementById('f1');
-  multiSelect(h,'t1m','Mes',optMes,renderT1);multiSelect(h,'t1s','Supervisor',optSup,renderT1);multiSelect(h,'t1q','Cuartil',optQ,renderT1);multiSelect(h,'t1t','Antigüedad 2',optT,renderT1);commonFilters(h,'t1',renderT1);}
-const p1=i=>has('t1m',M[i])&&has('t1s',S[i])&&has('t1q',Q[i])&&has('t1t',T[i])&&pc('t1',i);
-function renderT1(){setDayType('t1');
+  multiSelect(h,'t1m','Mes',optMes,renderT1);multiSelect(h,'t1s','Supervisor',optSup,renderT1);multiSelect(h,'t1q','Cuartil',optQ,renderT1);multiSelect(h,'t1t','Antigüedad 2',optT,renderT1);commonFilters(h,'t1',renderT1);semFilter(h,'t1',renderT1);}
+const p1b=i=>has('t1s',S[i])&&has('t1q',Q[i])&&has('t1t',T[i])&&pcx('t1',i);
+const p1=i=>p1b(i)&&has('t1m',M[i])&&semOK('t1',S[i]);
+function renderT1(){setDayType('t1');const bm1=baseMonths('t1m');SEMS.t1=semCompute(p1b,i=>S[i],prod,bm1);
   const byM=scan(p1,i=>M[i]);const ms=MONTHS.filter(m=>byM.has(m));
   const tot=total(p1);
   const cur=byM.get(CUR),prev=byM.get(CUR-1);
@@ -290,10 +329,10 @@ function renderT1(){setDayType('t1');
   // tabla supervisor: Vtas | Prod por mes con separador
   const byMS=scan(p1,i=>S[i]*100+M[i]);const bySup=scan(p1,i=>S[i]);
   const sups=[...bySup.keys()].sort((a,b)=>bySup.get(b).v-bySup.get(a).v);
-  const head=['Supervisor',...ms.flatMap(m=>[mlab(m)+' Vtas',mlab(m)+' Prod']),'Total Vtas','Prod. total','Var. prod '+MES[CUR]+' vs '+MES[CUR-1]];
+  const head=['Supervisor',...ms.flatMap(m=>[mlab(m)+' Vtas',mlab(m)+' Prod']),'Total Vtas','Prod. total','Semáforo prod. '+MES[CUR]+' vs '+baseLabel(bm1)];
   const seps=[...ms.map((m,j)=>1+j*2),1+ms.length*2];
-  table('tb1s',head,sups.map(s=>[SUPS[s],...ms.flatMap(m=>{const g=byMS.get(s*100+m);return g?[fmt(g.v),f2(prod(g))]:['–','–'];}),fmt(bySup.get(s).v),f2(prod(bySup.get(s))),delta(prod(byMS.get(s*100+CUR)),prod(byMS.get(s*100+CUR-1)))]),
-    ['Total',...ms.flatMap(m=>[fmt(byM.get(m).v),f2(prod(byM.get(m)))]),fmt(tot.v),f2(prod(tot)),delta(prod(cur),prod(prev))],seps);
+  table('tb1s',head,sups.map(s=>[SUPS[s],...ms.flatMap(m=>{const g=byMS.get(s*100+m);return g?[fmt(g.v),f2(prod(g))]:['–','–'];}),fmt(bySup.get(s).v),f2(prod(bySup.get(s))),semCell(SEMS.t1.get(s))]),
+    ['Total',...ms.flatMap(m=>[fmt(byM.get(m).v),f2(prod(byM.get(m)))]),fmt(tot.v),f2(prod(tot)),''],seps);
   const histTable=(host,flag)=>{const pr=i=>p1(i)&&E[i]===flag;const g=scan(pr,i=>M[i]);const mm=MONTHS.filter(m=>g.has(m));const t=total(pr);
     table(host,['Mes','Ventas','HC','Días lab.','Productividad','% vtas del mes','Var. prod m/m'],mm.map((m,j)=>{const x=g.get(m);return[mlab(m),fmt(x.v),fmt(x.hc.size),fmt(dlab(x)),f2(prod(x)),pct(x.v/(byM.get(m)?.v||NaN)),j?delta(prod(x),prod(g.get(mm[j-1]))):'–'];}),['Total',fmt(t.v),fmt(t.hc.size),fmt(dlab(t)),f2(prod(t)),pct(t.v/tot.v),'']);};
   histTable('tb1a',0);histTable('tb1b',1);
@@ -301,11 +340,12 @@ function renderT1(){setDayType('t1');
 
 /* ================= TAB 2 ================= */
 function initT2(){const h=document.getElementById('f2');
-  multiSelect(h,'t2s','Supervisor',optSup,renderT2);multiSelect(h,'t2c','Campaña',[{v:0,t:'MIGRA (Migración Regular)'}],renderT2);multiSelect(h,'t2q','Cuartil',optQ,renderT2);multiSelect(h,'t2t','Antigüedad',optT,renderT2);commonFilters(h,'t2',renderT2);
+  multiSelect(h,'t2s','Supervisor',optSup,renderT2);multiSelect(h,'t2c','Campaña',[{v:0,t:'MIGRA (Migración Regular)'}],renderT2);multiSelect(h,'t2q','Cuartil',optQ,renderT2);multiSelect(h,'t2t','Antigüedad',optT,renderT2);commonFilters(h,'t2',renderT2);semFilter(h,'t2',renderT2);
   toggle(h,'t2v',[{v:'M',t:'Mensual'},{v:'S',t:'Semanal'}],renderT2);single(h,'t2m','Mes (semanal)',optMes,CUR,renderT2);}
-const p2x=i=>has('t2s',S[i])&&has('t2q',Q[i])&&has('t2t',T[i])&&pcx('t2',i);
+const p2b=i=>has('t2s',S[i])&&has('t2q',Q[i])&&has('t2t',T[i])&&pcx('t2',i);
+const p2x=i=>p2b(i)&&semOK('t2',S[i]);
 const p2=i=>p2x(i)&&has('t2mm',M[i]);
-function renderT2(){setDayType('t2');
+function renderT2(){setDayType('t2');const bm2=baseMonths('t2mm');SEMS.t2=semCompute(p2b,i=>S[i],prod,bm2);
   const weekly=FILT.t2v.v==='S';const mSel=FILT.t2m.v;
   const pr=weekly?(i=>p2(i)&&M[i]===mSel):p2;
   const colKey=weekly?(i=>WK[i]):(i=>M[i]);
@@ -314,8 +354,8 @@ function renderT2(){setDayType('t2');
   const colName=c=>weekly?'S'+c:mlab(c);
   const sups=[...bySup.keys()].sort((a,b)=>bySup.get(b).v-bySup.get(a).v);
   const tot=total(pr);
-  const curA=total(i=>p2x(i)&&M[i]===CUR),prvA=total(i=>p2x(i)&&M[i]===CUR-1);
-  kpi('k2',[{t:'Total ventas',v:fmt(tot.v),s:weekly?MES[mSel]+' por semana':'histórico en ventana'},{t:'Dotación (HC)',v:fmt(tot.hc.size),s:'Activos + cesados'},{t:'Productividad total',v:f2(prod(tot)),s:'Ventas / Días lab. / HC'},{t:'Supervisores',v:sups.length},{t:'Avance '+MES[CUR],v:fmt(curA.v),s:'Prod. '+f2(prod(curA))+' vs '+MES[CUR-1]+' '+delta(prod(curA),prod(prvA)),cls:''}]);
+  const curA=total(i=>p2x(i)&&M[i]===CUR),prvA=total(i=>p2x(i)&&bm2.includes(M[i]));
+  kpi('k2',[{t:'Total ventas',v:fmt(tot.v),s:weekly?MES[mSel]+' por semana':'histórico en ventana'},{t:'Dotación (HC)',v:fmt(tot.hc.size),s:'Activos + cesados'},{t:'Productividad total',v:f2(prod(tot)),s:'Ventas / Días lab. / HC'},{t:'Supervisores',v:sups.length},{t:'Avance '+MES[CUR],v:fmt(curA.v),s:'Prod. '+f2(prod(curA))+' vs '+baseLabel(bm2)+' '+delta(prod(curA),prod(prvA)),cls:''}]);
   const pal=PAL();
   if(weekly){
     document.getElementById('c2t').textContent=`Productividad por supervisor y semana · ${MES[mSel]}`;
@@ -327,9 +367,9 @@ function renderT2(){setDayType('t2');
     chart('c2v',{chart:{type:'bar',height:380},series:[{name:`Prod. ${MES[MONTHS[0]]}–${MES[CUR-1]}`,data:ss.map(s=>{const x=prod(hist.get(s));return x==null?0:+x.toFixed(2);})},{name:'Prod. '+MES[CUR],data:ss.map(s=>{const x=prod(curS.get(s));return x==null?0:+x.toFixed(2);})}],xaxis:{categories:ss.map(s=>SUPS[s])},colors:[pal[0],pal[1]],dataLabels:{formatter:v=>v?f2(v):'',offsetY:-16,style:{fontSize:'10px'}},yaxis:{labels:{formatter:f2}},tooltip:{y:{formatter:f2}}});
   }
   document.getElementById('tb2t').textContent=`Ventas y productividad por supervisor · ${weekly?'semanal '+MES[mSel]:'mensual'}`;
-  table('tb2',['Supervisor',...cols.flatMap(c=>[colName(c)+' Vtas',colName(c)+' Prod']),'Total Vtas','HC','Días lab.','Prod. total'],
-    sups.map(s=>[SUPS[s],...cols.flatMap(c=>{const x=g.get(s*100+c);return[x?fmt(x.v):'–',x?f2(prod(x)):'–'];}),fmt(bySup.get(s).v),fmt(bySup.get(s).hc.size),fmt(dlab(bySup.get(s))),f2(prod(bySup.get(s)))]),
-    ['Total',...cols.flatMap(c=>[fmt(byCol.get(c).v),f2(prod(byCol.get(c)))]),fmt(tot.v),fmt(tot.hc.size),fmt(dlab(tot)),f2(prod(tot))],[...cols.map((c,j)=>1+j*2),1+cols.length*2]);
+  table('tb2',['Supervisor',...cols.flatMap(c=>[colName(c)+' Vtas',colName(c)+' Prod']),'Total Vtas','HC','Días lab.','Prod. total','Semáforo '+MES[CUR]+' vs '+baseLabel(bm2)],
+    sups.map(s=>[SUPS[s],...cols.flatMap(c=>{const x=g.get(s*100+c);return[x?fmt(x.v):'–',x?f2(prod(x)):'–'];}),fmt(bySup.get(s).v),fmt(bySup.get(s).hc.size),fmt(dlab(bySup.get(s))),f2(prod(bySup.get(s))),semCell(SEMS.t2.get(s))]),
+    ['Total',...cols.flatMap(c=>[fmt(byCol.get(c).v),f2(prod(byCol.get(c)))]),fmt(tot.v),fmt(tot.hc.size),fmt(dlab(tot)),f2(prod(tot)),''],[...cols.map((c,j)=>1+j*2),1+cols.length*2,5+cols.length*2]);
   const refM=weekly?mSel:CUR;
   document.getElementById('tb2qt').textContent=`Dotación (HC) y productividad por Cuartil de inicio de mes · ${MES[refM]}`;
   document.getElementById('tb2at').textContent=`Dotación (HC) y productividad por Antigüedad 2 · ${MES[refM]}`;
@@ -337,29 +377,30 @@ function renderT2(){setDayType('t2');
     table(host,['Supervisor',...li.map(j=>labels[j]+' HC'),...li.map(j=>labels[j]+' Prod')],ss.map(s=>[SUPS[s],...li.map(j=>fmt(x.get(s*100+j)?.hc.size||0)),...li.map(j=>f2(prod(x.get(s*100+j))))]),null,[1,1+li.length]);};
   comp(Q,QS,'tb2q');comp(T,TS,'tb2a');
   const day=Math.min(W.b,LASTDAY);const save={...W};W={a:W.a,b:day};
-  const c1=scan(i=>p2x(i)&&M[i]===CUR,i=>S[i]),c0=scan(i=>p2x(i)&&M[i]===CUR-1,i=>S[i]);W=save;
+  const c1=scan(i=>p2x(i)&&M[i]===CUR,i=>S[i]),c0=scan(i=>p2x(i)&&bm2.includes(M[i]),i=>S[i]);W=save;
   const ss=[...c1.keys()].sort((a,b)=>c1.get(b).v-c1.get(a).v);
-  table('tb2av',['Supervisor',`${MES[CUR]} D${W.a}-D${day} Vtas`,'HC','Días lab.','Prod',`${MES[CUR-1]} D${W.a}-D${day} Vtas`,'HC','Días lab.','Prod','Var. ventas','Var. prod'],ss.map(s=>{const a=c1.get(s),b=c0.get(s);return[SUPS[s],fmt(a.v),fmt(a.hc.size),fmt(dlab(a)),f2(prod(a)),b?fmt(b.v):'–',b?fmt(b.hc.size):'–',b?fmt(dlab(b)):'–',b?f2(prod(b)):'–',delta(a.v,b?.v),delta(prod(a),prod(b))];}),null,[1,5,9]);
+  table('tb2av',['Supervisor',`${MES[CUR]} D${W.a}-D${day} Vtas`,'HC','Días lab.','Prod',`${baseLabel(bm2)} D${W.a}-D${day} Vtas`,'HC','Días lab.','Prod','Var. ventas','Semáforo prod.'],ss.map(s=>{const a=c1.get(s),b=c0.get(s);return[SUPS[s],fmt(a.v),fmt(a.hc.size),fmt(dlab(a)),f2(prod(a)),b?fmt(b.v):'–',b?fmt(b.hc.size):'–',b?fmt(dlab(b)):'–',b?f2(prod(b)):'–',delta(a.v,b?.v),semCell(SEMS.t2.get(s))];}),null,[1,5,9]);
 }
 
 /* ================= TAB 3 ================= */
 function initT3(){const h=document.getElementById('f3');
   multiSelect(h,'t3s','Supervisor (maestro)',optSup,()=>{refreshAgentOpts();renderT3();});
-  multiSelect(h,'t3a','Asesor',[],renderT3);multiSelect(h,'t3q','Cuartil',optQ,renderT3);multiSelect(h,'t3t','Antigüedad',optT,renderT3);commonFilters(h,'t3',renderT3);
+  multiSelect(h,'t3a','Asesor',[],renderT3);multiSelect(h,'t3q','Cuartil',optQ,renderT3);multiSelect(h,'t3t','Antigüedad',optT,renderT3);commonFilters(h,'t3',renderT3);semFilter(h,'t3',renderT3);
   toggle(h,'t3v',[{v:'M',t:'Mensual'},{v:'S',t:'Semanal'}],renderT3);single(h,'t3m','Mes (semanal)',optMes,CUR,renderT3);refreshAgentOpts();}
 function refreshAgentOpts(){const set=new Set();for(let i=0;i<N;i++)if(has('t3s',S[i]))set.add(A[i]);FILT.t3a.setOptions([...set].map(a=>({v:a,t:AG[a][1]})).sort((x,y)=>x.t.localeCompare(y.t)));}
-const p3x=i=>has('t3s',S[i])&&has('t3a',A[i])&&has('t3q',Q[i])&&has('t3t',T[i])&&pcx('t3',i);
+const p3b=i=>has('t3s',S[i])&&has('t3a',A[i])&&has('t3q',Q[i])&&has('t3t',T[i])&&pcx('t3',i);
+const p3x=i=>p3b(i)&&semOK('t3',A[i]);
 const p3=i=>p3x(i)&&has('t3mm',M[i]);
-function renderT3(){setDayType('t3');
+function renderT3(){setDayType('t3');const bm3=baseMonths('t3mm');SEMS.t3=semCompute(p3b,i=>A[i],aprod,bm3);
   const weekly=FILT.t3v.v==='S';const mSel=FILT.t3m.v;
   const pr=weekly?(i=>p3(i)&&M[i]===mSel):p3;const colKey=weekly?(i=>WK[i]):(i=>M[i]);
   const g=scan(pr,i=>A[i]*100+colKey(i));const byA=scan(pr,i=>A[i]);const byCol=scan(pr,colKey);
   const cols=weekly?[1,2,3,4,5].filter(w=>byCol.has(w)):MONTHS.filter(m=>byCol.has(m));const colName=c=>weekly?'S'+c:mlab(c);
   const ags=[...byA.keys()].filter(a=>byA.get(a).hc.size).sort((a,b)=>byA.get(b).v-byA.get(a).v);
   const tot=total(pr);
-  const day=Math.min(W.b,LASTDAY);const save={...W};W={a:W.a,b:day};const cA=scan(i=>p3x(i)&&M[i]===CUR,i=>A[i]),pA=scan(i=>p3x(i)&&M[i]===CUR-1,i=>A[i]);const cT=total(i=>p3x(i)&&M[i]===CUR),pT=total(i=>p3x(i)&&M[i]===CUR-1);W=save;
+  const day=Math.min(W.b,LASTDAY);const save={...W};W={a:W.a,b:day};const cA=scan(i=>p3x(i)&&M[i]===CUR,i=>A[i]),pA=scan(i=>p3x(i)&&bm3.includes(M[i]),i=>A[i]);const cT=total(i=>p3x(i)&&M[i]===CUR),pT=total(i=>p3x(i)&&bm3.includes(M[i]));W=save;
   const byProd=[...ags].filter(a=>byA.get(a).ad>=5).sort((a,b)=>aprod(byA.get(b))-aprod(byA.get(a)));
-  kpi('k3',[{t:'Total ventas',v:fmt(tot.v)},{t:'Asesores',v:fmt(ags.length),s:'Activos + cesados'},{t:'Productividad total',v:f2(aprod(tot)),s:'Ventas / días laborables del asesor'},{t:'Mejor asesor (prod.)',v:byProd.length?AG[byProd[0]][1].split(' ').slice(0,2).join(' '):'–',s:byProd.length?f2(aprod(byA.get(byProd[0])))+' vtas/día · mín. 5 días':''},{t:'Avance '+MES[CUR]+` (D${W.a}-D${day})`,v:fmt(cT.v),s:'Prod. '+f2(aprod(cT))+' vs '+MES[CUR-1]+' '+delta(aprod(cT),aprod(pT)),cls:''}]);
+  kpi('k3',[{t:'Total ventas',v:fmt(tot.v)},{t:'Asesores',v:fmt(ags.length),s:'Activos + cesados'},{t:'Productividad total',v:f2(aprod(tot)),s:'Ventas / días laborables del asesor'},{t:'Mejor asesor (prod.)',v:byProd.length?AG[byProd[0]][1].split(' ').slice(0,2).join(' '):'–',s:byProd.length?f2(aprod(byA.get(byProd[0])))+' vtas/día · mín. 5 días':''},{t:'Avance '+MES[CUR]+` (D${W.a}-D${day})`,v:fmt(cT.v),s:'Prod. '+f2(aprod(cT))+' vs '+baseLabel(bm3)+' '+delta(aprod(cT),aprod(pT)),cls:''}]);
   const top=ags.slice(0,20);
   document.getElementById('c3t').textContent=`Top ${top.length} asesores por ventas · ${weekly?MES[mSel]+' (semanal)':'histórico en ventana'}`;
   chart('c3v',{chart:{type:'bar',height:Math.max(320,top.length*26)},series:[{name:'Ventas',data:top.map(a=>byA.get(a).v)}],xaxis:{categories:top.map(a=>AG[a][1]),labels:{formatter:fmt}},yaxis:{labels:{maxWidth:300,style:{fontSize:'11px'}}},colors:[css('--s1')],plotOptions:{bar:{horizontal:true,barHeight:'70%',dataLabels:{position:'top'}}},dataLabels:{formatter:fmt,offsetX:28},tooltip:{y:{formatter:fmt}}});
@@ -370,9 +411,9 @@ function renderT3(){setDayType('t3');
   const tOf=a=>{for(let k=lastM;k>=1;k--){const x=AMT[a+'_'+k];if(x!=null)return TS[x];}return'–';};
   const sOf=a=>{for(let k=lastM;k>=1;k--){const x=AMS[a+'_'+k];if(x!=null)return SUPS[x];}return'–';};
   const cell=x=>x?`${fmt(x.v)} <span class="text-slate-400">| ${f2(aprod(x))}</span>`:'–';
-  table('tb3',['Asesor','Supervisor','Estado Lab','Cuartil','Antig. 2',...cols.map(colName),'Total Vtas','Días lab.','Prod.',`Avance ${MES[CUR]} Vtas`,`Prod. ${MES[CUR]}`,'Var. prod vs '+MES[CUR-1]],
-    ags.map(a=>{const b=byA.get(a);return[AG[a][1],sOf(a),estado(a),qOf(a),tOf(a),...cols.map(c=>cell(g.get(a*100+c))),fmt(b.v),fmt(b.ad),f2(aprod(b)),cA.get(a)?fmt(cA.get(a).v):'–',f2(aprod(cA.get(a))),delta(aprod(cA.get(a)),aprod(pA.get(a)))];}),
-    ['Total','','','','',...cols.map(c=>cell(byCol.get(c))),fmt(tot.v),fmt(tot.ad),f2(aprod(tot)),fmt(cT.v),f2(aprod(cT)),delta(aprod(cT),aprod(pT))],[...cols.map((c,j)=>5+j),5+cols.length,8+cols.length]);
+  table('tb3',['Asesor','Supervisor','Estado Lab','Cuartil','Antig. 2',...cols.map(colName),'Total Vtas','Días lab.','Prod.',`Avance ${MES[CUR]} Vtas`,`Prod. ${MES[CUR]}`,`Prod. ${baseLabel(bm3)}`,'Semáforo '+MES[CUR]+' vs '+baseLabel(bm3)],
+    ags.map(a=>{const b=byA.get(a);return[AG[a][1],sOf(a),estado(a),qOf(a),tOf(a),...cols.map(c=>cell(g.get(a*100+c))),fmt(b.v),fmt(b.ad),f2(aprod(b)),cA.get(a)?fmt(cA.get(a).v):'–',f2(aprod(cA.get(a))),f2(aprod(pA.get(a))),semCell(SEMS.t3.get(a))];}),
+    ['Total','','','','',...cols.map(c=>cell(byCol.get(c))),fmt(tot.v),fmt(tot.ad),f2(aprod(tot)),fmt(cT.v),f2(aprod(cT)),f2(aprod(pT)),delta(aprod(cT),aprod(pT))],[...cols.map((c,j)=>5+j),5+cols.length,8+cols.length,12+cols.length]);
 }
 
 /* ================= TAB 4 ================= */
@@ -444,7 +485,7 @@ document.getElementById('btnFull').onclick=()=>applyWin(1,31);
 document.querySelectorAll('.tab-btn').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('.tab').forEach(s=>s.classList.add('hidden'));document.getElementById(b.dataset.tab).classList.remove('hidden');renderAll();});
 document.getElementById('btnTheme').onclick=()=>{theme=theme==='dark'?'light':'dark';document.documentElement.classList.toggle('dark',theme==='dark');document.getElementById('btnTheme').textContent=theme==='dark'?'Modo claro':'Modo oscuro';renderAll();};
 document.getElementById('subtitle').textContent=`Histórico ${MES[MONTHS[0]]}–${MES[CUR]} ${YEAR} · ${AG.length} asesores en histórico · Dotación vigente: ${RAW.meta.dotacionAsesores} asesores (corte ${RAW.meta.corteDot}) · Data hasta ${LASTDAY}/${CUR}/${YEAR}`;
-document.getElementById('notas').innerHTML=`<b>Definiciones.</b> Ventas = vv totales. HC = asesores únicos (activos y cesados) con día laboral o venta en la ventana. Días laborables = días de lunes a sábado, no feriados, con operación en la ventana. Productividad (general y supervisor) = Ventas / Días laborables / HC; en totales de varios meses o semanas = Ventas / Σ(Días laborables × HC) de cada mes. Productividad asesor = Ventas / días laborables del asesor. Estado Lab: Activo = figura en la Dotación de ${MES[CUR]} (corte ${RAW.meta.corteDot}); Cesado = no figura. Gestión: Laboral = lunes a sábado; No laboral = domingos y feriados nacionales 2026 (1 ene, 2-3 abr, 1 may, 7 y 29 jun, 23, 28 y 29 jul, 6 y 30 ago, 8 oct). Si se elige solo No laboral, la productividad usa los días no laborables con operación. Ausentismo = 1 − días conectados / días laborables programados (asesores en estado ACTIVO). Efectividad = ventas / marcaciones (desde Agosto). Antigüedad 2 de Enero a Junio derivada de la fecha de ingreso. Semanas: lunes–domingo; la S1 inicia el día 1 y lo posterior a la S5 se suma a la S5. El filtro Mes aplica en todas las pestañas; los bloques de Avance del mes en curso y el Informe de Ritmo siempre comparan el mes en curso con el anterior y el Mejor Mes se elige entre los meses seleccionados. Clic en cualquier encabezado de tabla para ordenar.`;
+document.getElementById('notas').innerHTML=`<b>Definiciones.</b> Ventas = vv totales. HC = asesores únicos (activos y cesados) con día laboral o venta en la ventana. Días laborables = días de lunes a sábado, no feriados, con operación en la ventana. Productividad (general y supervisor) = Ventas / Días laborables / HC; en totales de varios meses o semanas = Ventas / Σ(Días laborables × HC) de cada mes. Productividad asesor = Ventas / días laborables del asesor. Estado Lab: Activo = figura en la Dotación de ${MES[CUR]} (corte ${RAW.meta.corteDot}); Cesado = no figura. Gestión: Laboral = lunes a sábado; No laboral = domingos y feriados nacionales 2026 (1 ene, 2-3 abr, 1 may, 7 y 29 jun, 23, 28 y 29 jul, 6 y 30 ago, 8 oct). Si se elige solo No laboral, la productividad usa los días no laborables con operación. Ausentismo = 1 − días conectados / días laborables programados (asesores en estado ACTIVO). Efectividad = ventas / marcaciones (desde Agosto). Antigüedad 2 de Enero a Junio derivada de la fecha de ingreso. Semanas: lunes–domingo; la S1 inicia el día 1 y lo posterior a la S5 se suma a la S5. El filtro Mes aplica en todas las pestañas; los bloques de Avance del mes en curso y el Informe de Ritmo siempre comparan el mes en curso con el anterior y el Mejor Mes se elige entre los meses seleccionados. Semáforo (supervisor y asesor): variación de productividad del mes en curso vs mes base en la misma ventana de días (hasta el último día con data); mes base = meses seleccionados en el filtro Mes (sin el mes en curso) o, si no hay, el mes anterior. Bien > +5%, Regular entre −5% y +5%, Mal < −5%. Clic en cualquier encabezado de tabla para ordenar; botones Copiar / Descargar en cada cuadro para obtener la imagen.`;
 initT1();initT2();initT3();initT4();initT5();
 /* filtros inmovilizados debajo de la cabecera */
 ['f1','f2','f3','f4','f5'].forEach(id=>document.getElementById(id).classList.add('fbar'));
